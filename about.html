@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About — PlayAmigos</title>
+  <meta name="description" content="Learn about PlayAmigos — a collection of web apps for learning, productivity, games, and fun.">
+  <meta name="theme-color" content="#050510">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- Animated Gradient Background -->
+  <div class="bg-gradient" aria-hidden="true">
+    <div class="bg-blob bg-blob--teal"></div>
+    <div class="bg-blob bg-blob--purple"></div>
+    <div class="bg-blob bg-blob--magenta"></div>
+    <div class="bg-blob bg-blob--pink"></div>
+    <div class="bg-blob bg-blob--amber"></div>
+  </div>
+
+  <!-- Noise Overlay -->
+  <div class="bg-noise" aria-hidden="true"></div>
+
+  <!-- Page Content -->
+  <div class="page about-page">
+
+    <article class="about-card">
+      <h1 class="logo">PlayAmigos</h1>
+      <p class="tagline" id="tagline">apps for learning, productivity & fun</p>
+
+      <div class="about-body">
+        <p>
+          <strong>PlayAmigos</strong> originally started a long time ago as a games publisher name—born back when my friends and I used to build games together. While those early projects have evolved, I wanted the name and that cooperative spirit to stick around.
+        </p>
+        <p>
+          Today, this hub serves as a curated collection of useful web apps crafted around <strong>learning</strong>, <strong>productivity</strong>, and <strong>fun games</strong>. Each app is designed to be simple, interactive, and genuinely helpful.
+        </p>
+        <p>
+          New apps are added regularly. You can
+          <a href="#" id="blog-link" style="color: var(--accent-teal); border-bottom: 1px solid rgba(6, 182, 212, 0.3);">check out the blog</a>
+          to stay updated on new releases.
+        </p>
+        <p style="text-align: center; margin-top: var(--space-md); font-family: var(--font-display); font-weight: 700; color: var(--text-primary); letter-spacing: 0.02em;">
+          Stick around, have fun!
+        </p>
+      </div>
+
+      <a href="index.html" class="about-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="19" y1="12" x2="5" y2="12"/>
+          <polyline points="12 19 5 12 12 5"/>
+        </svg>
+        Back to apps
+      </a>
+    </article>
+
+  </div>
+
+  <script>
+    fetch('site.json')
+      .then(function(r) { return r.json(); })
+      .then(function(config) {
+        var blogLink = document.getElementById('blog-link');
+        if (blogLink && config.blogUrl) {
+          blogLink.href = config.blogUrl;
+          blogLink.target = '_blank';
+          blogLink.rel = 'noopener noreferrer';
+        }
+        var taglineEl = document.getElementById('tagline');
+        if (taglineEl && typeof config.tagline === 'string') {
+          if (config.tagline) {
+            taglineEl.textContent = config.tagline;
+            taglineEl.style.display = 'block';
+          } else {
+            taglineEl.style.display = 'none';
+          }
+        }
+      })
+      .catch(function() {});
+  </script>
+</body>
+</html>

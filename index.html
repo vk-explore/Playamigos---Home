@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlayAmigos — apps for learning, productivity & fun</title>
+  <meta name="description" content="PlayAmigos is a collection of web apps for learning, productivity, games, and fun. Discover and explore all apps in one place.">
+  <meta property="og:title" content="PlayAmigos">
+  <meta property="og:description" content="Apps for learning, productivity & fun">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#050510">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- Animated Gradient Background -->
+  <div class="bg-gradient" aria-hidden="true">
+    <div class="bg-blob bg-blob--teal"></div>
+    <div class="bg-blob bg-blob--purple"></div>
+    <div class="bg-blob bg-blob--magenta"></div>
+    <div class="bg-blob bg-blob--pink"></div>
+    <div class="bg-blob bg-blob--amber"></div>
+  </div>
+
+  <!-- Noise Overlay -->
+  <div class="bg-noise" aria-hidden="true"></div>
+
+  <!-- Particle Canvas -->
+  <canvas id="particle-canvas" aria-hidden="true"></canvas>
+
+  <!-- Page Content -->
+  <div class="page">
+
+    <!-- Centered Hero -->
+    <div class="hub-hero">
+      <h1 class="logo">PlayAmigos</h1>
+      <p class="tagline" id="tagline">apps for learning, productivity & fun</p>
+
+      <!-- Search -->
+      <div class="search-container">
+        <input
+          type="search"
+          class="search-input"
+          id="search-input"
+          placeholder="Search apps…"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="nav-pills" aria-label="Site navigation">
+        <a href="#" class="nav-pill" id="blog-link" target="_blank" rel="noopener noreferrer">Blog</a>
+        <a href="about.html" class="nav-pill" id="about-link">About</a>
+      </nav>
+    </div>
+
+    <!-- Category Filters -->
+    <div class="filter-section" id="filter-section"></div>
+
+    <!-- App Grid -->
+    <section class="app-section" aria-label="Apps">
+      <div class="app-grid" id="app-grid">
+        <!-- Cards rendered by JS -->
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer" id="site-footer">
+      Made with ❤️ by PlayAmigos
+    </footer>
+
+  </div>
+
+  <script src="particles.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

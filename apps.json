@@ -1,0 +1,10 @@
+[
+  {
+    "id": "forge",
+    "title": "Forge",
+    "description": "Learning habit builder with lessons delivered everyday",
+    "logo": "logos/forge.svg",
+    "url": "https://forge.playamigos.in",
+    "category": "Learning"
+  }
+]
