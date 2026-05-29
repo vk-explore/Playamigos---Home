@@ -334,14 +334,382 @@
     startIdleTracking();
   }
 
+  // ── Interactive Honeybee ──
+  function initBeeSimulator() {
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    // Synthesize death sounds
+    let audioCtx;
+    const playDeathSound = () => {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        // High pitch scream
+        const screamOsc = audioCtx.createOscillator();
+        const screamGain = audioCtx.createGain();
+        screamOsc.connect(screamGain);
+        screamGain.connect(audioCtx.destination);
+        
+        screamOsc.type = 'sawtooth';
+        screamOsc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        screamOsc.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + 0.2);
+        
+        screamGain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        screamGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        
+        screamOsc.start();
+        screamOsc.stop(audioCtx.currentTime + 0.2);
+
+        // Falling whistle
+        const fallOsc = audioCtx.createOscillator();
+        const fallGain = audioCtx.createGain();
+        fallOsc.connect(fallGain);
+        fallGain.connect(audioCtx.destination);
+        
+        fallOsc.type = 'sine';
+        fallOsc.frequency.setValueAtTime(1000, audioCtx.currentTime + 0.2);
+        fallOsc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 1.5);
+        
+        fallGain.gain.setValueAtTime(0, audioCtx.currentTime);
+        fallGain.gain.setValueAtTime(0.2, audioCtx.currentTime + 0.2);
+        fallGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+        
+        fallOsc.start(audioCtx.currentTime + 0.2);
+        fallOsc.stop(audioCtx.currentTime + 1.5);
+      } catch (e) { console.error('Audio failed', e); }
+    };
+
+    const playSlipperSound = () => {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        // Low thump
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+        
+        gain.gain.setValueAtTime(1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+
+        // Noise burst
+        const noiseOsc = audioCtx.createOscillator();
+        const noiseGain = audioCtx.createGain();
+        noiseOsc.connect(noiseGain);
+        noiseGain.connect(audioCtx.destination);
+        noiseOsc.type = 'square';
+        noiseOsc.frequency.setValueAtTime(500, audioCtx.currentTime);
+        noiseOsc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+        noiseGain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+        noiseOsc.start();
+        noiseOsc.stop(audioCtx.currentTime + 0.05);
+      } catch (e) {}
+    };
+
+    const chatPhrases = [
+      "Catch me if you can!",
+      "Too slow!",
+      "Slowmo today?",
+      "Missed me!",
+      "Bzzzz!",
+      "I am speed! ⚡",
+      "Nope! 😜",
+      "You almost had it!",
+      "Keep trying!"
+    ];
+
+    let difficultyLevel = 1;
+
+    function spawnBee() {
+      const beeWrapper = document.createElement('div');
+      beeWrapper.className = 'bee-wrapper';
+      
+      const beeContainer = document.createElement('div');
+      beeContainer.className = 'bee-container';
+      
+      const beeChat = document.createElement('div');
+      beeChat.className = 'bee-chat-bubble';
+      
+      // Minimal SVG Bee (PlayAmigos themed colors: soft blue, pink, and classic yellow/black)
+      beeContainer.innerHTML = `
+        <svg viewBox="0 0 100 100" class="bee-svg">
+          <!-- Wings (Tear-drop shape) -->
+          <path d="M 40 40 C 20 10, -10 30, 25 50 Z" fill="rgba(255,255,255,0.7)" stroke="#93c5fd" stroke-width="1.5" class="bee-wing bee-wing-left" />
+          <path d="M 60 40 C 80 10, 110 30, 75 50 Z" fill="rgba(255,255,255,0.7)" stroke="#93c5fd" stroke-width="1.5" class="bee-wing bee-wing-right" />
+          <!-- Body -->
+          <ellipse cx="50" cy="55" rx="22" ry="32" fill="#facc15" />
+          <!-- Stripes -->
+          <path d="M 30 50 Q 50 62 70 50 L 69 60 Q 50 72 31 60 Z" fill="#1f2937" />
+          <path d="M 34 68 Q 50 80 66 68 L 63 76 Q 50 86 37 76 Z" fill="#1f2937" />
+          <!-- Eyes -->
+          <circle cx="42" cy="40" r="4" fill="#1f2937" />
+          <circle cx="58" cy="40" r="4" fill="#1f2937" />
+          <circle cx="41" cy="39" r="1.5" fill="#fff" />
+          <circle cx="57" cy="39" r="1.5" fill="#fff" />
+          <!-- Stinger -->
+          <polygon points="46,86 54,86 50,98" fill="#1f2937" />
+        </svg>
+      `;
+      
+      beeWrapper.appendChild(beeContainer);
+      beeWrapper.appendChild(beeChat);
+      document.body.appendChild(beeWrapper);
+      
+      // Physics state
+      let x = Math.random() * window.innerWidth;
+      let y = -50;
+      let vx = 0;
+      let vy = 0;
+      
+      let baseNormalSpeed = 1.5 + (difficultyLevel * 1.5);
+      let baseFleeSpeed = 6 + (difficultyLevel * 4);
+      let evadeRadius = 120 + (difficultyLevel * 25);
+      
+      let maxSpeed = baseNormalSpeed;
+      let isSpeaking = false;
+      let isDead = false;
+      let speakTimer;
+      
+      // Continuous Buzzing Sound
+      let buzzOsc, buzzGain, panner;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        buzzOsc = audioCtx.createOscillator();
+        buzzGain = audioCtx.createGain();
+        panner = audioCtx.createStereoPanner();
+        
+        buzzOsc.connect(buzzGain);
+        buzzGain.connect(panner);
+        panner.connect(audioCtx.destination);
+        
+        buzzOsc.type = 'sawtooth';
+        buzzOsc.frequency.value = 150;
+        
+        buzzGain.gain.value = 0.02; // Very quiet background buzz
+        buzzOsc.start();
+      } catch(e) {}
+      
+      const showChat = () => {
+        if (isDead) return;
+        const msg = chatPhrases[Math.floor(Math.random() * chatPhrases.length)];
+        beeChat.textContent = msg;
+        beeChat.classList.add('show');
+        isSpeaking = true;
+        maxSpeed = baseNormalSpeed * 0.4; // Slow down while speaking
+        
+        speakTimer = setTimeout(() => {
+          beeChat.classList.remove('show');
+          isSpeaking = false;
+          maxSpeed = baseNormalSpeed;
+        }, 3000);
+      };
+
+      const speakInterval = setInterval(() => {
+        if (!isDead && !isSpeaking && Math.random() > 0.4) showChat();
+      }, 4000);
+
+      // Handle catch (global click with hit radius)
+      const handleHit = (e) => {
+        if (isDead) return;
+        
+        // Show hit effect indicator on EVERY click
+        const indicator = document.createElement('div');
+        indicator.className = 'hit-indicator';
+        indicator.style.left = e.clientX + 'px';
+        indicator.style.top = e.clientY + 'px';
+        document.body.appendChild(indicator);
+        setTimeout(() => indicator.remove(), 400);
+
+        // Play slipper swat sound on EVERY click
+        playSlipperSound();
+        
+        // Check distance to bee center
+        const dx = e.clientX - x;
+        const dy = e.clientY - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        const hitRadius = 60; // Forgiving hit box!
+        
+        if (dist < hitRadius) {
+          isDead = true;
+          
+          clearInterval(speakInterval);
+          clearTimeout(speakTimer);
+          beeChat.classList.remove('show');
+          
+          if (buzzOsc) {
+            buzzOsc.stop();
+            buzzOsc.disconnect();
+          }
+
+          playDeathSound();
+          beeContainer.classList.add('dead-bee');
+          
+          // Force vertical velocity for the fall
+          vy = 20;
+          vx = 0;
+          
+          setTimeout(() => {
+            beeWrapper.remove();
+            document.removeEventListener('mousedown', handleHit);
+            difficultyLevel++;
+            setTimeout(spawnBee, 2000); // Respawn harder bee!
+          }, 1500);
+        }
+      };
+      
+      // Delay attaching listener so it doesn't instantly die on spawn if mouse is down
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleHit);
+      }, 100);
+
+      let lastTime = performance.now();
+      let currentAngle = 0;
+      
+      function updatePhysics(time) {
+        requestAnimationFrame(updatePhysics);
+        
+        const dt = Math.min((time - lastTime) / 16.66, 2); // Normalized to 60fps, cap at 2 to prevent huge jumps
+        lastTime = time;
+
+        if (isDead) {
+          // Dead fall physics (straight down)
+          vy += 1 * dt; // Gravity
+          y += vy * dt;
+          currentAngle += 15 * dt; // Spin rapidly while falling
+          
+          beeWrapper.style.transform = `translate(${x - 20}px, ${y - 20}px)`;
+          beeContainer.style.transform = `rotate(${currentAngle}deg)`;
+          return; // Skip living physics
+        }
+        
+        // Distance to cursor
+        const dx = mouseX - x;
+        const dy = mouseY - y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        
+        let ax = 0;
+        let ay = 0;
+        
+        if (dist < evadeRadius) {
+          // Flee!
+          if (isSpeaking) {
+            beeChat.classList.remove('show');
+            isSpeaking = false;
+            clearTimeout(speakTimer);
+          }
+          maxSpeed = baseFleeSpeed;
+          
+          // Repulsion force inversely proportional to distance
+          const force = Math.pow((evadeRadius - dist) / evadeRadius, 2) * 5;
+          ax = -(dx / dist) * force;
+          ay = -(dy / dist) * force;
+        } else {
+          // Normal wander / drift to center
+          if (!isSpeaking) maxSpeed = baseNormalSpeed;
+          
+          const cx = window.innerWidth / 2;
+          const cy = window.innerHeight / 2;
+          
+          // Gentle pull to center if far away
+          ax = (cx - x) * 0.0002;
+          ay = (cy - y) * 0.0002;
+          
+          // Random jitter for natural flying
+          ax += (Math.random() - 0.5) * 0.8;
+          ay += (Math.random() - 0.5) * 0.8;
+        }
+        
+        // Wall Repulsion (Evade corners)
+        const wallMargin = 80;
+        const wallForce = 1.5;
+        if (x < wallMargin) ax += ((wallMargin - x) / wallMargin) * wallForce;
+        if (x > window.innerWidth - wallMargin) ax -= ((x - (window.innerWidth - wallMargin)) / wallMargin) * wallForce;
+        if (y < wallMargin) ay += ((wallMargin - y) / wallMargin) * wallForce;
+        if (y > window.innerHeight - wallMargin) ay -= ((y - (window.innerHeight - wallMargin)) / wallMargin) * wallForce;
+        
+        vx += ax * dt;
+        vy += ay * dt;
+        
+        // Friction
+        vx *= 0.94;
+        vy *= 0.94;
+        
+        // Clamp speed
+        const speed = Math.sqrt(vx * vx + vy * vy) || 1;
+        if (speed > maxSpeed) {
+          vx = (vx / speed) * maxSpeed;
+          vy = (vy / speed) * maxSpeed;
+        }
+        
+        x += vx * dt;
+        y += vy * dt;
+        
+        // Screen bounds bouncing
+        const margin = 20;
+        if (x < margin) { x = margin; vx *= -1; }
+        if (x > window.innerWidth - margin) { x = window.innerWidth - margin; vx *= -1; }
+        if (y < margin) { y = margin; vy *= -1; }
+        if (y > window.innerHeight - margin) { y = window.innerHeight - margin; vy *= -1; }
+        
+        // Rhythmic hovering
+        const hoverOffset = Math.sin(time / 200) * 8;
+        
+        // Smooth rotation
+        const targetAngle = Math.atan2(vy, vx) * (180 / Math.PI) + 90;
+        let diff = targetAngle - currentAngle;
+        
+        // Wrap around logic for smooth shortest-path rotation
+        while (diff < -180) diff += 360;
+        while (diff > 180) diff -= 360;
+        
+        currentAngle += diff * 0.15; // lerp factor
+        
+        // Panning Audio
+        if (panner && buzzOsc) {
+          let panValue = (x / window.innerWidth) * 2 - 1;
+          panner.pan.value = Math.max(-1, Math.min(1, panValue));
+          buzzOsc.frequency.value = 150 + Math.sin(time / 40) * 15; // flutter modulation
+        }
+
+        beeWrapper.style.transform = `translate(${x - 20}px, ${y - 20 + hoverOffset}px)`;
+        beeContainer.style.transform = `rotate(${currentAngle}deg)`;
+      }
+      
+      requestAnimationFrame(updatePhysics);
+    }
+
+    // Delay first spawn
+    setTimeout(spawnBee, 2000);
+  }
+
   // ── Go ──
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       init();
       initGreetBubble();
+      initBeeSimulator();
     });
   } else {
     init();
     initGreetBubble();
+    initBeeSimulator();
   }
 })();
