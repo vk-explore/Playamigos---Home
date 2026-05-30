@@ -433,9 +433,84 @@
       "Keep trying!"
     ];
 
+    const restPhrases = [
+      "Do not disturb! 💤",
+      "Zzz...",
+      "I'm on break.",
+      "Leave me alone.",
+      "Honk shoo...",
+      "Too tired to fly."
+    ];
+
     let difficultyLevel = 1;
 
-    function spawnBee() {
+    const flyingBeeSVG = `
+      <svg viewBox="0 0 100 100" class="bee-svg">
+        <!-- Wings (Tear-drop shape) -->
+        <path d="M 40 40 C 15 -5, -20 20, 20 50 Z" fill="rgba(255,255,255,0.7)" stroke="#93c5fd" stroke-width="2" class="bee-wing bee-wing-left" />
+        <path d="M 60 40 C 85 -5, 120 20, 80 50 Z" fill="rgba(255,255,255,0.7)" stroke="#93c5fd" stroke-width="2" class="bee-wing bee-wing-right" />
+        <!-- Body -->
+        <ellipse cx="50" cy="55" rx="22" ry="32" fill="#facc15" />
+        <!-- Stripes -->
+        <path d="M 30 50 Q 50 62 70 50 L 69 60 Q 50 72 31 60 Z" fill="#1f2937" />
+        <path d="M 34 68 Q 50 80 66 68 L 63 76 Q 50 86 37 76 Z" fill="#1f2937" />
+        <!-- Big Cute Eyes -->
+        <circle cx="41" cy="40" r="7" fill="#1f2937" />
+        <circle cx="59" cy="40" r="7" fill="#1f2937" />
+        <circle cx="39" cy="38" r="2.5" fill="#fff" />
+        <circle cx="57" cy="38" r="2.5" fill="#fff" />
+        <circle cx="43" cy="42" r="1" fill="#fff" />
+        <circle cx="61" cy="42" r="1" fill="#fff" />
+        <!-- Stinger -->
+        <polygon points="46,86 54,86 50,98" fill="#1f2937" />
+      </svg>
+    `;
+
+    const restingBeeSVG = `
+      <svg viewBox="0 0 100 100" class="bee-svg">
+        <!-- Dangling legs -->
+        <path d="M 40 75 Q 40 95 55 95" fill="none" stroke="#1f2937" stroke-width="3" stroke-linecap="round" />
+        <path d="M 60 75 Q 60 95 45 95" fill="none" stroke="#1f2937" stroke-width="3" stroke-linecap="round" />
+
+        <!-- Folded Wings (Wrapped in group for occasional flap) -->
+        <g id="resting-wings">
+          <path d="M 25 35 C -5 20, 10 70, 35 55 Z" fill="rgba(255,255,255,0.8)" stroke="#93c5fd" stroke-width="1.5" />
+          <path d="M 75 35 C 105 20, 90 70, 65 55 Z" fill="rgba(255,255,255,0.8)" stroke="#93c5fd" stroke-width="1.5" />
+        </g>
+
+        <!-- Chubby Round Body -->
+        <circle cx="50" cy="50" r="28" fill="#facc15" />
+        
+        <!-- Stripes (curved for 3D belly effect) -->
+        <path d="M 23 45 Q 50 55 77 45" stroke="#1f2937" stroke-width="5" fill="none" />
+        <path d="M 26 60 Q 50 70 74 60" stroke="#1f2937" stroke-width="5" fill="none" />
+        
+        <!-- Big Cute Sunglasses (Wrapped in groups for movement and blinking) -->
+        <g id="resting-head">
+          <g id="resting-sunglasses" style="transform-origin: 50% 35px;">
+            <circle cx="38" cy="35" r="9" fill="#111" />
+            <circle cx="62" cy="35" r="9" fill="#111" />
+            <path d="M 45 35 Q 50 32 55 35" stroke="#111" stroke-width="2" fill="none" />
+            <!-- Sunglasses reflections -->
+            <path d="M 33 32 A 6 6 0 0 1 40 30" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round" />
+            <path d="M 57 32 A 6 6 0 0 1 64 30" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round" />
+          </g>
+        </g>
+        
+        <!-- Stinger (tucked down) -->
+        <polygon points="45,75 55,75 50,85" fill="#1f2937" />
+
+        <!-- Lemonade -->
+        <rect x="65" y="45" width="14" height="20" rx="1" fill="rgba(255,255,255,0.8)" stroke="#111" stroke-width="1.5" />
+        <rect x="67" y="52" width="10" height="11" fill="#fde047" />
+        <line x1="69" y1="65" x2="75" y2="35" stroke="#ef4444" stroke-width="2" stroke-linecap="round" />
+        <circle cx="79" cy="50" r="4" fill="#facc15" stroke="#111" stroke-width="1" />
+        <!-- Little arm holding it -->
+        <path d="M 70 55 Q 75 55 75 60" stroke="#1f2937" stroke-width="3" fill="none" stroke-linecap="round" />
+      </svg>
+    `;
+
+    function spawnBee(isRespawn = false) {
       const beeWrapper = document.createElement('div');
       beeWrapper.className = 'bee-wrapper';
       
@@ -445,34 +520,30 @@
       const beeChat = document.createElement('div');
       beeChat.className = 'bee-chat-bubble';
       
-      // Minimal SVG Bee (PlayAmigos themed colors: soft blue, pink, and classic yellow/black)
-      beeContainer.innerHTML = `
-        <svg viewBox="0 0 100 100" class="bee-svg">
-          <!-- Wings (Tear-drop shape) -->
-          <path d="M 40 40 C 20 10, -10 30, 25 50 Z" fill="rgba(255,255,255,0.7)" stroke="#93c5fd" stroke-width="1.5" class="bee-wing bee-wing-left" />
-          <path d="M 60 40 C 80 10, 110 30, 75 50 Z" fill="rgba(255,255,255,0.7)" stroke="#93c5fd" stroke-width="1.5" class="bee-wing bee-wing-right" />
-          <!-- Body -->
-          <ellipse cx="50" cy="55" rx="22" ry="32" fill="#facc15" />
-          <!-- Stripes -->
-          <path d="M 30 50 Q 50 62 70 50 L 69 60 Q 50 72 31 60 Z" fill="#1f2937" />
-          <path d="M 34 68 Q 50 80 66 68 L 63 76 Q 50 86 37 76 Z" fill="#1f2937" />
-          <!-- Eyes -->
-          <circle cx="42" cy="40" r="4" fill="#1f2937" />
-          <circle cx="58" cy="40" r="4" fill="#1f2937" />
-          <circle cx="41" cy="39" r="1.5" fill="#fff" />
-          <circle cx="57" cy="39" r="1.5" fill="#fff" />
-          <!-- Stinger -->
-          <polygon points="46,86 54,86 50,98" fill="#1f2937" />
-        </svg>
-      `;
+      beeContainer.innerHTML = isRespawn ? flyingBeeSVG : restingBeeSVG;
       
       beeWrapper.appendChild(beeContainer);
       beeWrapper.appendChild(beeChat);
       document.body.appendChild(beeWrapper);
       
       // Physics state
-      let x = Math.random() * window.innerWidth;
+      let beeState = isRespawn ? 'FLYING' : 'RESTING';
+      let x = window.innerWidth / 2;
       let y = -50;
+      
+      if (beeState === 'RESTING') {
+        const searchBox = document.querySelector('.search-input');
+        if (searchBox) {
+          const rect = searchBox.getBoundingClientRect();
+          x = rect.right - 20; // exactly on the right edge
+          y = rect.top - 10;   // firmly sitting on it
+        }
+      } else {
+        // Respawn from off-screen
+        x = Math.random() > 0.5 ? -100 : window.innerWidth + 100;
+        y = Math.random() * window.innerHeight;
+      }
+      
       let vx = 0;
       let vy = 0;
       
@@ -480,10 +551,10 @@
       let baseFleeSpeed = 6 + (difficultyLevel * 4);
       let evadeRadius = 120 + (difficultyLevel * 25);
       
-      let maxSpeed = baseNormalSpeed;
+      let maxSpeed = 0;
       let isSpeaking = false;
-      let isDead = false;
       let speakTimer;
+      let hasWarned = false;
       
       // Continuous Buzzing Sound
       let buzzOsc, buzzGain, panner;
@@ -507,27 +578,42 @@
       } catch(e) {}
       
       const showChat = () => {
-        if (isDead) return;
-        const msg = chatPhrases[Math.floor(Math.random() * chatPhrases.length)];
+        if (beeState === 'DEAD') return;
+        const phrases = beeState === 'RESTING' ? restPhrases : chatPhrases;
+        const msg = phrases[Math.floor(Math.random() * phrases.length)];
         beeChat.textContent = msg;
         beeChat.classList.add('show');
         isSpeaking = true;
-        maxSpeed = baseNormalSpeed * 0.4; // Slow down while speaking
+        if (beeState === 'FLYING') maxSpeed = baseNormalSpeed * 0.4;
         
         speakTimer = setTimeout(() => {
           beeChat.classList.remove('show');
           isSpeaking = false;
-          maxSpeed = baseNormalSpeed;
+          if (beeState === 'FLYING') maxSpeed = baseNormalSpeed;
         }, 3000);
       };
 
+      if (isRespawn) {
+        setTimeout(() => {
+          beeChat.textContent = "I'm back for revenge!";
+          beeChat.classList.add('show');
+          isSpeaking = true;
+          maxSpeed = baseNormalSpeed * 0.4;
+          speakTimer = setTimeout(() => {
+            beeChat.classList.remove('show');
+            isSpeaking = false;
+            if (beeState === 'FLYING') maxSpeed = baseNormalSpeed;
+          }, 3000);
+        }, 100);
+      }
+
       const speakInterval = setInterval(() => {
-        if (!isDead && !isSpeaking && Math.random() > 0.4) showChat();
+        if (beeState !== 'DEAD' && !isSpeaking && Math.random() > 0.4) showChat();
       }, 4000);
 
       // Handle catch (global click with hit radius)
       const handleHit = (e) => {
-        if (isDead) return;
+        if (beeState === 'DEAD') return;
         
         // Show hit effect indicator on EVERY click
         const indicator = document.createElement('div');
@@ -548,7 +634,22 @@
         const hitRadius = 60; // Forgiving hit box!
         
         if (dist < hitRadius) {
-          isDead = true;
+          if (beeState === 'RESTING') {
+            // Wake up on first click instead of dying!
+            beeState = 'FLYING';
+            beeContainer.innerHTML = flyingBeeSVG;
+            if (isSpeaking) {
+              beeChat.classList.remove('show');
+              isSpeaking = false;
+              clearTimeout(speakTimer);
+            }
+            // Burst of speed to run away
+            vx = -(dx / dist) * baseFleeSpeed * 1.5;
+            vy = -(dy / dist) * baseFleeSpeed * 1.5;
+            return;
+          }
+
+          beeState = 'DEAD';
           
           clearInterval(speakInterval);
           clearTimeout(speakTimer);
@@ -570,7 +671,7 @@
             beeWrapper.remove();
             document.removeEventListener('mousedown', handleHit);
             difficultyLevel++;
-            setTimeout(spawnBee, 2000); // Respawn harder bee!
+            setTimeout(() => spawnBee(true), 2000); // Respawn harder bee!
           }, 1500);
         }
       };
@@ -589,7 +690,7 @@
         const dt = Math.min((time - lastTime) / 16.66, 2); // Normalized to 60fps, cap at 2 to prevent huge jumps
         lastTime = time;
 
-        if (isDead) {
+        if (beeState === 'DEAD') {
           // Dead fall physics (straight down)
           vy += 1 * dt; // Gravity
           y += vy * dt;
@@ -605,6 +706,76 @@
         const dy = mouseY - y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
         
+        if (beeState === 'RESTING') {
+          const searchBox = document.querySelector('.search-input');
+          if (searchBox) {
+            const rect = searchBox.getBoundingClientRect();
+            // Lock position strictly to the right corner without drifting
+            x = rect.right - 20;
+            y = rect.top - 10;
+          }
+          
+          // Hover offset is 0, he is sitting
+          const hoverOffset = 0;
+          
+          // Head tracks cursor more aggressively
+          const head = document.getElementById('resting-head');
+          if (head) {
+             const lookX = (dx / window.innerWidth) * 15;
+             const lookY = (dy / window.innerHeight) * 15;
+             head.style.transform = `translate(${lookX}px, ${lookY}px)`;
+          }
+          
+          // Occasional blink
+          const sunglasses = document.getElementById('resting-sunglasses');
+          if (sunglasses) {
+             if (Math.random() < 0.005) {
+                sunglasses.classList.add('occasional-blink');
+                setTimeout(() => sunglasses.classList.remove('occasional-blink'), 250);
+             }
+          }
+
+          // Occasional wing flap
+          const wings = document.getElementById('resting-wings');
+          if (wings) {
+             if (Math.random() < 0.01) {
+                wings.classList.add('occasional-flap');
+                setTimeout(() => wings.classList.remove('occasional-flap'), 400);
+             }
+          }
+
+          // Warn if hovering close
+          if (dist < 200 && !hasWarned) {
+             hasWarned = true;
+             beeChat.textContent = "Don't mess with me you will regret! 😠";
+             beeChat.classList.add('show');
+             isSpeaking = true;
+             clearTimeout(speakTimer);
+             speakTimer = setTimeout(() => {
+                beeChat.classList.remove('show');
+                isSpeaking = false;
+             }, 3000);
+          }
+          
+          // Panning Audio (quieter when resting)
+          if (panner && buzzOsc) {
+            let panValue = (x / window.innerWidth) * 2 - 1;
+            panner.pan.value = Math.max(-1, Math.min(1, panValue));
+            buzzOsc.frequency.value = 130; // calm steady buzz
+            buzzGain.gain.value = 0.005; // very quiet
+          }
+          
+          // Fixed angle for sitting upright
+          currentAngle = 0;
+          
+          beeWrapper.style.transform = `translate(${x - 20}px, ${y - 20 + hoverOffset}px)`;
+          beeContainer.style.transform = `rotate(${currentAngle}deg)`;
+          return;
+        }
+        
+        // If flying, ensure volume is normal
+        if (buzzGain) buzzGain.gain.value = 0.02;
+
         let ax = 0;
         let ay = 0;
         
@@ -696,8 +867,8 @@
       requestAnimationFrame(updatePhysics);
     }
 
-    // Delay first spawn
-    setTimeout(spawnBee, 2000);
+    // Spawn immediately
+    spawnBee();
   }
 
   // ── Go ──
