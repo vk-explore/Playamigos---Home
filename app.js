@@ -174,15 +174,17 @@
       card.setAttribute('aria-label', `Open ${app.title}`);
 
       card.innerHTML = `
-        <img
-          class="app-card__logo"
-          src="${escapeHtml(app.logo)}"
-          alt="${escapeHtml(app.title)} logo"
-          width="36"
-          height="36"
-          loading="lazy"
-          onerror="this.style.display='none'"
-        >
+        <div class="app-card__logo-wrapper">
+          <img
+            class="app-card__logo"
+            src="${escapeHtml(app.logo)}"
+            alt="${escapeHtml(app.title)} logo"
+            width="36"
+            height="36"
+            loading="lazy"
+            onerror="this.style.display='none'"
+          >
+        </div>
         <div class="app-card__info">
           <span class="app-card__title" ${app.fontFamily ? `style="font-family: '${escapeHtml(app.fontFamily)}';"` : ''}>${escapeHtml(app.title)}</span>
           <span class="app-card__desc">${escapeHtml(app.description)}</span>
@@ -421,6 +423,24 @@
       } catch (e) {}
     };
 
+    const playMinimalClickSound = () => {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.05);
+      } catch (e) {}
+    };
+
     const chatPhrases = [
       "Catch me if you can!",
       "Too slow!",
@@ -614,6 +634,23 @@
       // Handle catch (global click with hit radius)
       const handleHit = (e) => {
         if (beeState === 'DEAD') return;
+
+        // If clicking the search bar, disturb the bee and ignore hit logic
+        if (e.target.closest && e.target.closest('.search-container')) {
+          if (beeState === 'RESTING') {
+            beeState = 'FLYING';
+            beeContainer.innerHTML = flyingBeeSVG;
+            if (isSpeaking) {
+              beeChat.classList.remove('show');
+              isSpeaking = false;
+              clearTimeout(speakTimer);
+            }
+            // Fly upwards away from the search bar
+            vx = (Math.random() - 0.5) * baseFleeSpeed;
+            vy = -baseFleeSpeed * 1.5;
+          }
+          return;
+        }
         
         // Show hit effect indicator on EVERY click
         const indicator = document.createElement('div');
@@ -622,9 +659,6 @@
         indicator.style.top = e.clientY + 'px';
         document.body.appendChild(indicator);
         setTimeout(() => indicator.remove(), 400);
-
-        // Play slipper swat sound on EVERY click
-        playSlipperSound();
         
         // Check distance to bee center
         const dx = e.clientX - x;
@@ -634,6 +668,7 @@
         const hitRadius = 60; // Forgiving hit box!
         
         if (dist < hitRadius) {
+          playSlipperSound();
           if (beeState === 'RESTING') {
             // Wake up on first click instead of dying!
             beeState = 'FLYING';
@@ -673,6 +708,8 @@
             difficultyLevel++;
             setTimeout(() => spawnBee(true), 2000); // Respawn harder bee!
           }, 1500);
+        } else {
+          playMinimalClickSound();
         }
       };
       
@@ -793,19 +830,23 @@
           ax = -(dx / dist) * force;
           ay = -(dy / dist) * force;
         } else {
-          // Normal wander / drift to center
-          if (!isSpeaking) maxSpeed = baseNormalSpeed;
+          // Autonomous sweeping flight pattern independent of cursor
+          if (!isSpeaking) maxSpeed = 7; // moderate autonomous speed
           
+          // Slowed down the time divisors to create large, smooth arcs
+          const wanderAngle = time / 2000;
+          ax = Math.cos(wanderAngle) * 0.8;
+          ay = Math.sin(wanderAngle * 1.3) * 0.8;
+          
+          // Gentle pull to center to prevent hugging walls
           const cx = window.innerWidth / 2;
           const cy = window.innerHeight / 2;
+          ax += (cx - x) * 0.0004;
+          ay += (cy - y) * 0.0004;
           
-          // Gentle pull to center if far away
-          ax = (cx - x) * 0.0002;
-          ay = (cy - y) * 0.0002;
-          
-          // Random jitter for natural flying
-          ax += (Math.random() - 0.5) * 0.8;
-          ay += (Math.random() - 0.5) * 0.8;
+          // Random jitter for organic insect flight
+          ax += (Math.random() - 0.5) * 0.6;
+          ay += (Math.random() - 0.5) * 0.6;
         }
         
         // Wall Repulsion (Evade corners)
@@ -860,8 +901,41 @@
           buzzOsc.frequency.value = 150 + Math.sin(time / 40) * 15; // flutter modulation
         }
 
-        beeWrapper.style.transform = `translate(${x - 20}px, ${y - 20 + hoverOffset}px)`;
+        // Pseudo-3D Depth Scaling (only when moving)
+        const speedRatio = Math.min(speed / 8, 1); // 0 when still, 1 when moving fast
+        const baseScale = 1.0;
+        const depthScale = (Math.sin(time / 1600) * 0.15 + Math.sin(time / 2800) * 0.1) * speedRatio;
+        const finalScale = baseScale + depthScale; // Oscillates subtly between ~0.75 and 1.25, only during flight
+
+        beeWrapper.style.transform = `translate(${x - 20}px, ${y - 20 + hoverOffset}px) scale(${finalScale})`;
         beeContainer.style.transform = `rotate(${currentAngle}deg)`;
+        
+        // Trail logic
+        // Calculate exact tail position based on visual rotation
+        const visualHeading = (currentAngle - 90) * (Math.PI / 180);
+        const tailDist = 18; 
+        const tailX = x - tailDist * Math.cos(visualHeading);
+        const tailY = y - tailDist * Math.sin(visualHeading);
+
+        if (!beeWrapper.lastTrailX) {
+          beeWrapper.lastTrailX = tailX;
+          beeWrapper.lastTrailY = tailY;
+        }
+        
+        const distSinceLastTrail = Math.sqrt(Math.pow(tailX - beeWrapper.lastTrailX, 2) + Math.pow(tailY - beeWrapper.lastTrailY, 2));
+        if (distSinceLastTrail > 12) {
+          const dash = document.createElement('div');
+          dash.className = 'bee-trail-dash';
+          // Offset by -3px to center the 6x6 circle exactly at the tail
+          dash.style.left = `${tailX - 3}px`;
+          dash.style.top = `${tailY + hoverOffset - 3}px`;
+          
+          document.body.appendChild(dash);
+          setTimeout(() => dash.remove(), 1500); 
+          
+          beeWrapper.lastTrailX = tailX;
+          beeWrapper.lastTrailY = tailY;
+        }
       }
       
       requestAnimationFrame(updatePhysics);
@@ -871,16 +945,63 @@
     spawnBee();
   }
 
+  // ── Logo Magnetic Hover & Continuous Gradient ──
+  function initLogoInteraction() {
+    const logo = document.getElementById('site-logo');
+    if (!logo) return;
+    
+    const letters = logo.querySelectorAll('.jello-letter');
+    let mouseX = -1000;
+    
+    logo.addEventListener('mousemove', (e) => { mouseX = e.clientX; });
+    logo.addEventListener('mouseleave', () => { mouseX = -1000; });
+    
+    let time = 0;
+    
+    const renderLogo = () => {
+      time += 0.003; // Gradient animation speed
+      const gradientOffset = (time % 1) * 100;
+      
+      letters.forEach((letter, index) => {
+        // Continuous gradient across letters (10 letters = ~8% offset each)
+        const letterOffset = index * 8; 
+        const bgPos = gradientOffset - letterOffset;
+        letter.style.setProperty('--bg-pos', `${bgPos}%`);
+        
+        // Magnetic falloff logic
+        const rect = letter.getBoundingClientRect();
+        const letterCenterX = rect.left + rect.width / 2;
+        const distance = Math.abs(mouseX - letterCenterX);
+        
+        const maxDist = 80;
+        if (distance < maxDist && mouseX !== -1000) {
+          const intensity = 1 - (distance / maxDist);
+          const ease = intensity * intensity; // Smooth quadratic falloff
+          letter.style.setProperty('--hover-scale', 1 + (0.15 * ease));
+          letter.style.setProperty('--hover-y', `${-4 * ease}px`);
+        } else {
+          letter.style.setProperty('--hover-scale', 1);
+          letter.style.setProperty('--hover-y', '0px');
+        }
+      });
+      requestAnimationFrame(renderLogo);
+    };
+    
+    renderLogo();
+  }
+
   // ── Go ──
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       init();
       initGreetBubble();
       initBeeSimulator();
+      initLogoInteraction();
     });
   } else {
     init();
     initGreetBubble();
     initBeeSimulator();
+    initLogoInteraction();
   }
 })();
